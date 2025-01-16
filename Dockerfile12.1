@@ -1,4 +1,4 @@
-FROM nvidia/cuda:12.4.1-cudnn-devel-ubuntu22.04 AS comfyui
+FROM nvidia/cuda:12.1.0-cudnn8-devel-ubuntu22.04 AS comfyui
 
 ARG APT_MIRROR=mirrors.aliyun.com
 ARG PIP_INDEX=https://mirrors.aliyun.com/pypi/simple
@@ -24,7 +24,7 @@ RUN pip install --no-cache-dir --upgrade -i $PIP_INDEX pysocks 'requests[socks]'
 # Copy only requirements.txt initially to leverage Docker cache
 WORKDIR /workspace
 COPY requirements.txt /workspace/
-RUN pip install --no-cache-dir --upgrade -i $PIP_INDEX --extra-index-url https://download.pytorch.org/whl/cu124 --default-timeout=100 -r requirements.txt
+RUN pip install --no-cache-dir --upgrade -i $PIP_INDEX --extra-index-url https://download.pytorch.org/whl/cu121 --default-timeout=100 -r requirements.txt
 
 
 RUN pip install --no-cache-dir --upgrade -i $PIP_INDEX matplotlib==3.7.0
