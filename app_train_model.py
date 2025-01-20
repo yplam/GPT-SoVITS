@@ -1,6 +1,7 @@
 import argparse
 import json
 import os
+import time
 from subprocess import Popen
 import shutil
 
@@ -171,6 +172,15 @@ def main():
     parser = argparse.ArgumentParser(description="Train a model")
     parser.add_argument('--model', required=False, default="", help="模型名称，将根据此名称拼接路径")
     args = parser.parse_args()
+    if args.model == "all":
+        for model in os.listdir("input"):
+            print('start training model:', model)
+            dataset_formatting(model)
+            train_sovits(model)
+            train_gpt(model)
+            print('end training model:', model)
+            time.sleep(5)
+        return
     dataset_formatting(args.model)
     train_sovits(args.model)
     train_gpt(args.model)

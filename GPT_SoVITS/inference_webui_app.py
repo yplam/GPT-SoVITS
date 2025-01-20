@@ -675,6 +675,46 @@ def get_weights_names(GPT_weight_root, SoVITS_weight_root):
 
 SoVITS_names, GPT_names = get_weights_names(GPT_weight_root, SoVITS_weight_root)
 
+########################################
+
+models_root = "models"
+model_names = os.listdir(models_root)
+model_names.insert(0, '')
+model_name = ''
+wav_files = ['']
+ref_wav_file = ''
+
+def change_model(new_model_name, prompt_language=None, text_language=None):
+    global models_root, model_name, gpt_path, sovits_path
+    if new_model_name == model_name or new_model_name == '':
+        return
+    model_name = new_model_name
+    new_gpt_path = gpt_path
+    new_sovits_path = sovits_path
+    for gpt in GPT_names:
+        if new_model_name in gpt:
+            change_gpt_weights(gpt)
+            new_gpt_path = gpt
+            break
+    for sovits in SoVITS_names:
+        if new_model_name in sovits:
+            change_sovits_weights(sovits, prompt_language, text_language)
+            new_sovits_path = sovits
+            break
+    model_path = os.path.join(models_root, model_name)
+    new_wav_files = ["%s/%s"%(model_path,mf.replace('.wav', '')) for mf in os.listdir(model_path)]
+    return {"value": new_gpt_path, "__type__": "update"}, {"value": new_sovits_path, "__type__": "update"}, {"choices": sorted(new_wav_files, key=custom_sort_key), "value": '', "__type__": "update"}
+
+def change_ref_wav(new_ref_wav_file):
+    global ref_wav_file, prompt_text
+    sps = new_ref_wav_file.split('/', 3)
+    prompt_text = sps[-1]
+    ref_wav_file = new_ref_wav_file + '.wav'
+    print('change ref_wav_file:', ref_wav_file)
+    return {"value": ref_wav_file, "__type__": "update"}, {"value": prompt_text, "__type__": "update"}
+
+########################################
+
 def html_center(text, label='p'):
     return f"""<div style="text-align: center; margin: 100; padding: 50;">
                 <{label} style="margin: 0; padding: 0;">{text}</{label}>
@@ -688,10 +728,13 @@ def html_left(text, label='p'):
 
 with gr.Blocks(title="GPT-SoVITS WebUI") as app:
     gr.Markdown(
-        value=i18n("本软件以MIT协议开源, 作者不对软件具备任何控制力, 使用软件者、传播软件导出的声音者自负全责. <br>如不认可该条款, 则不能使用或引用软件包内任何代码和文件. 详见根目录<b>LICENSE</b>.")
+        value="V2 升级，可直接选择角色与参考音频"
     )
     with gr.Group():
         gr.Markdown(html_center(i18n("模型切换"),'h3'))
+        with gr.Row():
+            Models_dropdown = gr.Dropdown(label="角色", choices=sorted(model_names, key=custom_sort_key), value=model_name, interactive=True, scale=14)
+            Audios_dropdown = gr.Dropdown(label=i18n("参考音频"), choices=sorted(wav_files, key=custom_sort_key), value=ref_wav_file, interactive=True, scale=14)
         with gr.Row():
             GPT_dropdown = gr.Dropdown(label=i18n("GPT模型列表"), choices=sorted(GPT_names, key=custom_sort_key), value=gpt_path, interactive=True, scale=14)
             SoVITS_dropdown = gr.Dropdown(label=i18n("SoVITS模型列表"), choices=sorted(SoVITS_names, key=custom_sort_key), value=sovits_path, interactive=True, scale=14)
@@ -699,7 +742,7 @@ with gr.Blocks(title="GPT-SoVITS WebUI") as app:
             refresh_button.click(fn=change_choices, inputs=[], outputs=[SoVITS_dropdown, GPT_dropdown])
         gr.Markdown(html_center(i18n("*请上传并填写参考信息"),'h3'))
         with gr.Row():
-            inp_ref = gr.Audio(label=i18n("请上传3~10秒内参考音频，超过会报错！"), type="filepath", scale=13)
+            inp_ref = gr.Audio(label=i18n("请上传3~10秒内参考音频，超过会报错！"), type="filepath", interactive=True, scale=13)
             with gr.Column(scale=13):
                 ref_text_free = gr.Checkbox(label=i18n("开启无参考文本模式。不填参考文本亦相当于开启。"), value=False, interactive=True, show_label=True,scale=1)
                 gr.Markdown(html_left(i18n("使用无参考文本模式时建议使用微调的GPT，听不清参考音频说的啥(不晓得写啥)可以开。<br>开启后无视填写的参考文本。")))
@@ -746,6 +789,8 @@ with gr.Blocks(title="GPT-SoVITS WebUI") as app:
         SoVITS_dropdown.change(change_sovits_weights, [SoVITS_dropdown,prompt_language,text_language], [prompt_language,text_language,prompt_text,prompt_language,text,text_language])
         GPT_dropdown.change(change_gpt_weights, [GPT_dropdown], [])
 
+        Models_dropdown.change(change_model, [Models_dropdown,prompt_language,text_language], [GPT_dropdown, SoVITS_dropdown, Audios_dropdown])
+        Audios_dropdown.change(change_ref_wav, [Audios_dropdown], [inp_ref, prompt_text])
         # gr.Markdown(value=i18n("文本切分工具。太长的文本合成出来效果不一定好，所以太长建议先切。合成会根据文本的换行分开合成再拼起来。"))
         # with gr.Row():
         #     text_inp = gr.Textbox(label=i18n("需要合成的切分前文本"), value="")
