@@ -1,10 +1,11 @@
 # Base CUDA image
-FROM cnstark/pytorch:2.0.1-py3.9.17-cuda11.8.0-ubuntu20.04
+FROM nvidia/cuda:12.4.1-cudnn-devel-ubuntu22.04
 
-LABEL maintainer="breakstring@hotmail.com"
-LABEL version="dev-20240209"
-LABEL description="Docker image for GPT-SoVITS"
-
+ARG APT_MIRROR=mirrors.aliyun.com
+ARG PIP_INDEX=https://mirrors.aliyun.com/pypi/simple
+ARG TIMEZONE=Asia/Shanghai
+ARG UID=1000
+ARG GID=1000
 
 # Install 3rd party apps
 ENV DEBIAN_FRONTEND=noninteractive
@@ -14,10 +15,16 @@ RUN apt-get update && \
     git lfs install && \
     rm -rf /var/lib/apt/lists/*
 
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends cmake build-essential curl wget git python-is-python3 python3-dev python3-pip vim && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN pip install --no-cache-dir --upgrade -i $PIP_INDEX pysocks 'requests[socks]' openpyxl matplotlib==3.7.0 numba==0.56.4 torchmetrics==1.5
+
 # Copy only requirements.txt initially to leverage Docker cache
 WORKDIR /workspace
 COPY requirements.txt /workspace/
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -i $PIP_INDEX --extra-index-url https://download.pytorch.org/whl/cu124 --default-timeout=100 -r requirements.txt
 
 # Define a build-time argument for image type
 ARG IMAGE_TYPE=full
